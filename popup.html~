@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SF Case View</title>
+  <style>
+    body { font-family: sans-serif; width: 200px; padding: 10px; }
+    button { width: 100%; padding: 8px; cursor: pointer; }
+    p { font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h3>Salesforce Case View</h3>
+  <p>Click below to generate the case summary in a new tab.</p>
+  <button id="generateViewBtn">Generate Full View</button>
+  <script src="popup.js"></script>
+</body>
+</html>

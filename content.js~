@@ -1,0 +1,206 @@
+// content.js - Complete File (v28 - Re-derived Detail Selectors)
+
+console.log("Salesforce Case Full View Content Script Loaded (v28 - Re-derived Detail Selectors).");
+
+// --- Helper Functions --- (Keep all helpers: waitForElement, sendMessagePromise, escapeHtml, getTextContentFromElement, parseDateStringFromTable)
+/**
+ * Waits for an element matching the selector to appear in the DOM.
+ */
+function waitForElement(selector, baseElement = document, timeout = 15000) { /* ... same ... */
+  // console.log(`Waiting for "${selector}"...`);
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const interval = setInterval(() => { const element = baseElement.querySelector(selector); if (element) { /*console.log(`waitForElement: Found "${selector}"`);*/ clearInterval(interval); resolve(element); } else if (Date.now() - startTime > timeout) { console.warn(`waitForElement: Timeout waiting for "${selector}"`); clearInterval(interval); resolve(null); } }, 300);
+  });
+ }
+/**
+ * Wraps chrome.runtime.sendMessage in a Promise for async/await usage.
+ */
+function sendMessagePromise(message) { /* ... same ... */
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(message, (response) => { if (chrome.runtime.lastError) { console.error("sendMessagePromise failed:", chrome.runtime.lastError); reject(chrome.runtime.lastError); } else { resolve(response); } });
+    });
+ }
+function escapeHtml(unsafe) { /* ... same ... */ if (typeof unsafe !== 'string') return unsafe === null || typeof unsafe === 'undefined' ? '' : String(unsafe); return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+function getTextContentFromElement(element, selector) { /* ... same ... */ if (!element) return 'N/A'; const childElement = element.querySelector(selector); return childElement ? childElement.textContent?.trim() : 'N/A'; }
+/**
+ * Parses a date string (DD/MM/YYYY HH:MM) into a Date object.
+ */
+function parseDateStringFromTable(dateString) { /* ... same ... */ if (!dateString) return null; let match = dateString.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/); if (match) { try { const day = parseInt(match[1]); const month = parseInt(match[2]) - 1; const year = parseInt(match[3]); const hour = parseInt(match[4]); const minute = parseInt(match[5]); if (year > 1970 && month >= 0 && month < 12 && day >= 1 && day <= 31 && hour >= 0 && hour < 24 && minute >= 0 && minute < 60) { const dateObject = new Date(Date.UTC(year, month, day, hour, minute)); if (!isNaN(dateObject.getTime())) return dateObject; else console.warn(`CS Date Invalid Comp: "${dateString}"`); return null; } else { console.warn(`CS Date Comp Range: "${dateString}"`); return null; } } catch (e) { console.error(`CS Error creating Date: "${dateString}"`, e); return null; } } else { const parsedFallback = Date.parse(dateString); if (!isNaN(parsedFallback)) return new Date(parsedFallback); else console.warn(`CS Could not parse date: "${dateString}"`); return null; } }
+
+
+// --- Functions to Extract Case Details (REVISED Selectors) ---
+
+function findSubjectInContainer(container) {
+    if (!container) return 'N/A';
+    // Strategy: Find the unique LWC for subject, then the text inside.
+    const element = container.querySelector('support-output-case-subject-field lightning-formatted-text');
+    console.log("Finding Subject:", element ? 'Found' : 'Not Found');
+    return element ? element.textContent?.trim() : 'N/A (Subject)';
+}
+
+function findCaseNumberInContainer(container) {
+     if (!container) return 'N/A';
+     // Strategy: Assume it's the first item AND directly contains lightning-formatted-text
+     // This is positional and potentially fragile.
+     console.log("Finding Case Number (assuming 1st item)...");
+     const firstItem = container.querySelector('records-highlights-details-item:nth-of-type(1)');
+     const element = firstItem?.querySelector('p.fieldComponent lightning-formatted-text');
+     // Check it doesn't contain other known unique components found in other fields
+     if (element &&
+         !firstItem.querySelector('support-output-case-subject-field') &&
+         !firstItem.querySelector('records-formula-output') &&
+         !firstItem.querySelector('force-lookup') )
+     {
+         console.log("Case Number element found:", !!element);
+         return element.textContent?.trim() || 'N/A (Case #)';
+     }
+     console.warn("Case Number selector (1st item, specific checks) failed.");
+     return 'N/A (Case #)';
+}
+
+function findStatusInContainer(container) {
+    if (!container) return 'N/A';
+    console.log("Attempting to find Status (item with specific rich text/img)...");
+    // Strategy: Find the item containing the rich text formula output, specifically looking for the span part
+    // This assumes "Case Milestone Status" corresponds to the desired "Status" field.
+    const statusItem = container.querySelector('records-highlights-details-item:has(records-formula-output lightning-formatted-rich-text)');
+    const element = statusItem?.querySelector('lightning-formatted-rich-text span[part="formatted-rich-text"]');
+    console.log("Status element found:", !!element);
+    // textContent might include hidden text or just the visible part (e.g., " GTI")
+    return element ? element.textContent?.trim() : 'N/A (Status)';
+}
+
+async function findCreatorName() { // Searches document using field-label
+    console.log("Finding Creator Name (System Info)...");
+    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]');
+    if (!createdByItem) { console.warn("Creator layout item not found."); return 'N/A (Creator)'; }
+    const nameElement = createdByItem.querySelector('force-lookup a');
+    console.log("Creator name element found:", !!nameElement);
+    return nameElement ? nameElement.textContent?.trim() : 'N/A (Creator)';
+}
+
+async function findCreatedDate() { // Searches document using field-label
+    console.log("Finding Created Date (System Info)...");
+    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]');
+    if (!createdByItem) { console.warn("Created Date layout item not found."); return 'N/A (Created Date)'; }
+    const dateElement = createdByItem.querySelector('records-modstamp lightning-formatted-text');
+     console.log("Created Date element found:", !!dateElement);
+    return dateElement ? dateElement.textContent?.trim() : 'N/A (Created Date)';
+}
+
+function findOwnerInContainer(container) {
+     if (!container) return 'N/A';
+     console.log("Finding Owner (force-lookup a)...");
+     // Strategy: Find the specific item containing force-lookup, then the link.
+     // This assumes 'Assigned User' is the 'Owner' and uses force-lookup uniquely here.
+     const ownerItem = container.querySelector('records-highlights-details-item:has(force-lookup)');
+     const element = ownerItem?.querySelector('force-lookup a');
+     console.log("Owner element found:", !!element);
+     return element ? element.textContent?.trim() : 'N/A (Owner)';
+}
+
+async function findCaseDescription() { /* ... same as v20 ... */
+    // console.log("Attempting to find Case Description...");
+     const descriptionContainer = await waitForElement('article.cPSM_Case_Description'); if (!descriptionContainer) return '';
+     let textElement = descriptionContainer.querySelector('lightning-formatted-text.txtAreaReadOnly') || descriptionContainer.querySelector('lightning-formatted-text'); if (!textElement) return '';
+     const viewMoreButton = descriptionContainer.querySelector('button.slds-button:not([disabled])'); let descriptionHTML = '';
+     if (viewMoreButton && (viewMoreButton.textContent.includes('View More') || viewMoreButton.textContent.includes('Show More'))) {
+        viewMoreButton.click(); await new Promise(resolve => setTimeout(resolve, 500));
+        let updatedTextElement = descriptionContainer.querySelector('lightning-formatted-text.txtAreaReadOnly') || descriptionContainer.querySelector('lightning-formatted-text'); descriptionHTML = updatedTextElement?.innerHTML?.trim() || '';
+     } else { descriptionHTML = textElement?.innerHTML?.trim() || ''; } return descriptionHTML; }
+
+
+// --- Function to Extract Note URLs from Table (to send to background) ---
+async function extractAndFetchNotes() { /* ... same as v21 ... */
+  const notesHeaderSelector = 'a.slds-card__header-link[href*="/related/PSM_Notes__r/view"]';
+  // console.log(`Finding Notes header link ("${notesHeaderSelector}")...`);
+  const headerLinkElement = await waitForElement(notesHeaderSelector); if (!headerLinkElement) { console.warn(`Notes header link not found.`); return []; }
+  const headerElement = headerLinkElement.closest('lst-list-view-manager-header'); if (!headerElement) { console.warn("Notes parent header element not found."); return []; }
+  const countSpan = headerLinkElement.querySelector('span[title*="("]'); if (countSpan && countSpan.textContent?.trim() === '(0)') { console.log("Notes count is (0), skipping."); return []; }
+  let commonContainer = headerElement.closest('lst-common-list-internal') || headerElement.closest('lst-related-list-view-manager'); if (!commonContainer) { console.error("Cannot find Notes container."); return []; }
+  const listManager = commonContainer.closest('lst-related-list-view-manager') || commonContainer; const viewAllLink = listManager?.querySelector('a.slds-card__footer[href*="/related/PSM_Notes__r/view"]'); if (viewAllLink && viewAllLink.offsetParent !== null) { console.log("Clicking 'View All' Notes..."); viewAllLink.click(); await new Promise(resolve => setTimeout(resolve, 1500)); }
+  const dataTable = await waitForElement('lightning-datatable', commonContainer, 10000); if (!dataTable) { console.warn("Notes datatable not found."); return []; }
+  const tableBody = await waitForElement('tbody[data-rowgroup-body]', dataTable, 5000); if (!tableBody) { console.warn("Notes table body not found."); return []; }
+  const rows = tableBody.querySelectorAll('tr[data-row-key-value]'); const notesToFetch = []; const origin = window.location.origin;
+  rows.forEach((row, index) => { /* ... same extraction ... */ const noteLink = row.querySelector('th[data-label="PSM Note Name"] a'); const authorLink = row.querySelector('td[data-label="Created By"] a'); const dateSpan = row.querySelector('td[data-label="Created Date"] lst-formatted-text span'); const snippetEl = row.querySelector('td[data-label="Description"] lightning-base-formatted-text'); const relativeUrl = noteLink?.getAttribute('href'); const noteDateStr = dateSpan?.title || dateSpan?.textContent?.trim(); if (relativeUrl && noteDateStr) { notesToFetch.push({ type: 'Note', url: new URL(relativeUrl, origin).href, title: noteLink?.textContent?.trim() || 'N/A', author: authorLink?.textContent?.trim() || 'N/A', dateStr: noteDateStr, descriptionSnippet: snippetEl?.textContent?.trim() || '' }); } else { console.warn(`Skipping Note row ${index+1}.`); } });
+  if (notesToFetch.length === 0) { console.log("No Notes found in table."); return []; }
+  console.log(`Sending ${notesToFetch.length} Notes to background...`);
+  try { const response = await sendMessagePromise({ action: "fetchItemDetails", items: notesToFetch });
+    if (response?.status === "success" && response.details) { console.log(`Received ${Object.keys(response.details).length} Note details.`); return notesToFetch.map(noteInfo => { /* ... same combining ... */ const fetched = response.details[noteInfo.url]; const finalDateObject = fetched?.dateObject ? new Date(fetched.dateObject) : parseDateStringFromTable(noteInfo.dateStr); let finalDescription = fetched?.description; if (finalDescription?.startsWith('Error:')) { finalDescription = noteInfo.descriptionSnippet || finalDescription; } return { type: 'Note', url: noteInfo.url, title: noteInfo.title, author: noteInfo.author, dateStr: noteInfo.dateStr, dateObject: finalDateObject, content: finalDescription || '', attachments: 'N/A' }; }).filter(note => note.dateObject !== null); }
+    else { throw new Error(response?.message || "Invalid response for Notes"); }
+  } catch (error) { console.error("Error processing Notes:", error); return []; }
+ }
+
+
+// --- Function to Extract Email Info from Table and Trigger Fetch ---
+async function extractAndFetchEmails() { /* ... same as v21 ... */
+  const emailsListContainerSelector = 'div.forceListViewManager[aria-label*="Emails"]';
+  // console.log(`Finding Emails container ("${emailsListContainerSelector}")...`);
+  const emailsListContainer = await waitForElement(emailsListContainerSelector); if (!emailsListContainer) { console.warn(`Emails container not found.`); return []; }
+  const headerLinkElement = emailsListContainer.querySelector('lst-list-view-manager-header a.slds-card__header-link[title="Emails"]'); if (headerLinkElement) { const countSpan = headerLinkElement.querySelector('span[title*="("]'); if (countSpan && countSpan.textContent?.trim() === '(0)') { console.log("Emails count is (0), skipping."); return []; } }
+  const parentCard = emailsListContainer.closest('.forceRelatedListSingleContainer'); const viewAllLink = parentCard?.querySelector('a.slds-card__footer[href*="/related/EmailMessages/view"]'); if (viewAllLink && viewAllLink.offsetParent !== null) { console.log("Clicking 'View All' Emails..."); viewAllLink.click(); await new Promise(resolve => setTimeout(resolve, 1500)); }
+  const dataTable = await waitForElement('table.uiVirtualDataTable', emailsListContainer, 10000); if (!dataTable) { console.warn("Emails table not found."); return []; }
+  const tableBody = await waitForElement('tbody', dataTable, 5000); if (!tableBody) { console.warn("Emails table body not found."); return []; }
+  const rows = tableBody.querySelectorAll('tr'); const emailsToFetch = []; const origin = window.location.origin;
+  rows.forEach((row, index) => { /* ... same extraction ... */ const cells = row.querySelectorAll('th, td'); if (cells.length < 5) { console.warn(`Skipping email row ${index+1}.`); return; } const subjectLink = cells[1]?.querySelector('a.outputLookupLink'); const fromEl = cells[2]?.querySelector('a.emailuiFormattedEmail'); const toEl = cells[3]?.querySelector('span.uiOutputText'); const dateEl = cells[4]?.querySelector('span.uiOutputDateTime'); const relativeUrl = subjectLink?.getAttribute('href'); const emailSubject = subjectLink?.textContent?.trim(); const emailDateStr = dateEl?.textContent?.trim(); if (relativeUrl && emailSubject && emailDateStr) { emailsToFetch.push({ type: 'Email', url: new URL(relativeUrl, origin).href, title: emailSubject, author: fromEl?.textContent?.trim() || 'N/A', to: toEl?.title || toEl?.textContent?.trim() || 'N/A', dateStr: emailDateStr }); } else { console.warn(`Skipping Email row ${index+1}.`); } });
+  if (emailsToFetch.length === 0) { console.log("No Emails found in table."); return []; }
+  console.log(`Sending ${emailsToFetch.length} Emails to background...`);
+  try { const response = await sendMessagePromise({ action: "fetchItemDetails", items: emailsToFetch });
+    if (response?.status === "success" && response.details) { console.log(`Received ${Object.keys(response.details).length} Email details.`); return emailsToFetch.map(emailInfo => { /* ... same combining ... */ const fetched = response.details[emailInfo.url]; const finalDateObject = fetched?.dateObject ? new Date(fetched.dateObject) : parseDateStringFromTable(emailInfo.dateStr); let finalContent = fetched?.description; if (finalContent?.startsWith('Error:')) { finalContent = `Subject: ${emailInfo.title}<br>[Body Fetch Error: ${finalContent}]`; } return { type: 'Email', url: emailInfo.url, title: fetched?.subject || emailInfo.title, author: fetched?.from || emailInfo.author, to: fetched?.to || emailInfo.to, dateStr: emailInfo.dateStr, dateObject: finalDateObject, content: finalContent || `Subject: ${emailInfo.title}<br>[Body Not Fetched]`, attachments: 'N/A' }; }).filter(email => email.dateObject !== null); }
+    else { throw new Error(response?.message || "Invalid response for Emails"); }
+  } catch (error) { console.error("Error processing Emails:", error); return []; }
+ }
+
+
+// --- Main Function to Orchestrate Extraction and Generate HTML ---
+async function generateCaseViewHtml(generatedTime) {
+  console.log("Starting async HTML generation (v28 - Re-derived Details)..."); // Updated log
+
+  // console.log("Scrolling to bottom..."); // Keep scroll, but reduce logging
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' }); // Use auto for faster scroll?
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  // console.log("Scroll attempt complete. Proceeding...");
+
+  const CASE_CONTAINER_SELECTOR = 'records-highlights2'; // Confirmed by user
+  const caseContainerElement = await waitForElement(CASE_CONTAINER_SELECTOR);
+  if (!caseContainerElement) { console.warn(`Case container ("${CASE_CONTAINER_SELECTOR}") not found.`); }
+  else { console.log("Main Case container found."); }
+
+  console.log("Extracting Case details...");
+  // Call updated functions
+  const subject = findSubjectInContainer(caseContainerElement); // Pass container
+  const caseNumber = findCaseNumberInContainer(caseContainerElement); // Pass container
+  const status = findStatusInContainer(caseContainerElement); // Pass container
+  const owner = findOwnerInContainer(caseContainerElement); // Pass container
+  // These search document
+  const creatorName = await findCreatorName();
+  const createdDateCaseStr = await findCreatedDate();
+  const caseDescription = await findCaseDescription();
+
+  let allItems = [];
+  console.log("--- Starting Notes Extraction ---");
+  const notesData = await extractAndFetchNotes();
+  if (notesData) { console.log(`Adding ${notesData.length} notes to items.`); allItems = allItems.concat(notesData); }
+  console.log("--- Starting Emails Extraction ---");
+  const emailsData = await extractAndFetchEmails();
+  if (emailsData) { console.log(`Adding ${emailsData.length} emails to items.`); allItems = allItems.concat(emailsData); }
+
+  console.log(`Sorting ${allItems.length} combined items...`);
+  allItems.sort((a, b) => { /* ... sort logic ... */ const dateA = a.dateObject || 0; const dateB = b.dateObject || 0; if (!dateA && !dateB) return 0; if (!dateA) return 1; if (!dateB) return -1; return dateA - dateB; });
+
+  console.log("Constructing final HTML output...");
+  // --- Construct the Final HTML Output ---
+   let html = ` <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Case ${escapeHtml(caseNumber || 'N/A')}: ${escapeHtml(subject || 'N/A')}</title> <style> /* ... CSS from v21 ... */ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.3; padding: 15px 20px; margin-left: 20px; margin-right: 20px; color: #333; } h1, h2 { border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 20px; margin-bottom: 12px; color: #1a5f90; } h1 { font-size: 1.6em; text-align: left; } h2 { font-size: 1.3em; } .generation-info { font-size: 0.8em; color: #777; margin-bottom: 15px; text-align: right; } .case-details { background-color: #f7f9fa; border: 1px solid #e1e5eb; padding: 12px 15px; border-radius: 4px; margin-bottom: 20px; } .case-details h2 { margin-top: 0; margin-bottom: 10px; } .case-details-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 3px 12px; margin-bottom: 12px; align-items: baseline;} .case-details-grid dt { grid-column: auto / span 1; font-weight: 600; color: #005fb2; text-align: right; padding-right: 6px; } .case-details-grid dd { grid-column: auto / span 1; margin-left: 0; word-wrap: break-word; } .case-description-label { font-weight: 600; color: #005fb2; margin-bottom: 3px; display: block; } .case-details .item-content { white-space: pre-wrap; word-wrap: break-word; margin-top: 0px; padding: 8px 10px; background-color: #f1f1f1; border-radius: 3px; line-height: 1.35; font-size: 0.95em; } .timeline-item { border: 1px solid #e1e5eb; padding: 10px 15px; margin-bottom: 8px; border-radius: 4px; background-color: #fff; } .timeline-item.type-note { border-left: 4px solid #6b92dc; } .timeline-item.type-email { border-left: 4px solid #5cb85c; } .item-header { font-size: 0.9em; color: #333; margin-bottom: 6px; border-bottom: 1px dashed #eee; padding-bottom: 5px; line-height: 1.4; } .item-timestamp { color: #444; font-family: monospace; margin-right: 8px; font-size: 0.95em; } .item-type-label { color: #005fb2; font-weight: bold; } .item-subject-title { font-weight: 600; color: #111; margin-left: 4px; } .item-meta-label { color: #005fb2; font-weight: 600; } .item-meta-info { color: #444; } .item-content { white-space: normal; word-wrap: break-word; color: #333; margin-top: 8px; font-size: 0.95em; line-height: 1.4; } .item-content p { margin-top: 0; margin-bottom: 0.4em; } .item-content strong { font-weight: bold; } .item-content em { font-style: italic; } .item-content ul { list-style: disc; margin-left: 1.5em; padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; } .item-content ol { list-style: decimal; margin-left: 1.5em; padding-left: 0; margin-top: 0.4em; margin-bottom: 0.4em; } .item-attachments { font-style: italic; color: #777; font-size: 0.85em; margin-top: 8px; } </style> </head> <body> <h1>Case ${escapeHtml(caseNumber || 'N/A')}: ${escapeHtml(subject || 'N/A')}</h1> <div class="generation-info">Generated: ${generatedTime}</div> <div class="case-details"> <h2>Case Details</h2> <dl class="case-details-grid"> <dt>Subject:</dt><dd>${escapeHtml(subject || 'N/A')}</dd> <dt>Status:</dt><dd>${escapeHtml(status || 'N/A')}</dd> <dt>Owner:</dt><dd>${escapeHtml(owner || 'N/A')}</dd> <dt>Created By:</dt><dd>${escapeHtml(creatorName || 'N/A')}</dd> <dt>Date Created:</dt><dd>${escapeHtml(createdDateCaseStr || 'N/A')}</dd> </dl> <div class="case-description-label">Description:</div> <div class="item-content">${caseDescription || ''}</div> </div> <h2>Notes and Emails (${allItems.length} items)</h2> `; // ... rest of HTML generation loop ...
+    if (allItems.length === 0) { html += "<p>No Notes or Emails found or extracted.</p>"; }
+    else { allItems.forEach(item => { /* ... same loop as v21 ... */ const contentHtml = (item.type === 'Note' && item.content && !item.content.startsWith('Error:')) || (item.type === 'Email' && item.content && !item.content.startsWith('Error:')) ? item.content : escapeHtml(item.content || ''); let headerDetails = ''; let formattedTimestamp = 'N/A'; try { if (item.dateObject && !isNaN(item.dateObject.getTime())) { formattedTimestamp = item.dateObject.toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); } else { formattedTimestamp = escapeHtml(item.dateStr || 'N/A'); } } catch (e) { formattedTimestamp = escapeHtml(item.dateStr || 'N/A'); } if (item.type === 'Email') { headerDetails = `<br><span class="item-meta-label">From:</span> <span class="item-meta-info">${escapeHtml(item.author || 'N/A')}</span> | <span class="item-meta-label">To:</span> <span class="item-meta-info">${escapeHtml(item.to || 'N/A')}</span>`; } else { headerDetails = `<br><span class="item-meta-label">By:</span> <span class="item-meta-info"><strong>${escapeHtml(item.author || 'N/A')}</strong></span>`; } html += `<div class="timeline-item type-${escapeHtml(item.type?.toLowerCase() || 'unknown')}"><div class="item-header"><span class="item-timestamp">[${formattedTimestamp}]</span> <strong class="item-type-label">${escapeHtml(item.type || 'Item')}</strong>: <span class="item-subject-title">${escapeHtml(item.title || 'N/A')}</span> ${headerDetails}</div><div class="item-content">${contentHtml}</div><div class="item-attachments">Attachments: ${escapeHtml(item.attachments || 'N/A')}</div></div>`; }); }
+    html += `</body></html>`;
+  console.log("HTML generation complete.");
+  return html;
+} // End of generateCaseViewHtml
+
+
+// --- Message Listener ---
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => { /* ... same as v23 ... */
+  if (message.action === "generateFullCaseView") { console.log("Content Script: Received request 'generateFullCaseView'."); const now = new Date(); const generatedTime = now.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }); generateCaseViewHtml(generatedTime) .then(fullHtml => { console.log("Content Script: Async generation complete, sending HTML to background."); if (fullHtml.length > 50 * 1024 * 1024) { console.error("HTML too large"); fullHtml = "HTML too large"; } chrome.runtime.sendMessage({ action: "openFullViewTab", htmlContent: fullHtml }); }) .catch(error => { console.error("Content Script: Error generating HTML:", error); }); return true; } if (message.action === "logUrlProcessing") { console.log(`[BACKGROUND] Processing ${message.itemType} ${message.index}/${message.total}: ${message.url}`); return false; } return false; });
+console.log("Content Script: Message listener attached.");
