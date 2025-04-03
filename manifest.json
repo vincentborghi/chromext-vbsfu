@@ -6,13 +6,12 @@
   "permissions": [
     "activeTab",
     "scripting"
-    // "offscreen" permission removed as it's no longer needed
   ],
   "host_permissions": [
-    "*://*.lightning.force.com/*" // <<< ADD THIS SECTION
+    "*://myat*.lightning.force.com/*" // 
   ],
   "background": {
-    "service_worker": "background.js" // Should be v9 (Tab Automation)
+    "service_worker": "background.js" 
   },
   "action": {
     "default_popup": "popup.html",
@@ -29,8 +28,8 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.lightning.force.com/lightning/r/Case/*"],
-      "js": ["content.js"] // Should be v10 (Fixed Action Name)
+      "matches": ["*://myat*.lightning.force.com/lightning/r/Case/*"],
+      "js": ["content.js"] 
     }
   ]
 }
