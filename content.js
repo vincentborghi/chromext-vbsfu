@@ -206,6 +206,19 @@ function findOwnerInContainer(container) {
      return element ? element.textContent?.trim() : 'N/A (Owner)';
 }
 
+// ** NEW: Function to find Account Name from main details section **
+async function findAccountName() {
+    console.log("Attempting to find Account Name...");
+    const accountItem = await waitForElement('records-record-layout-item[field-label="Account Name"]');
+    if (!accountItem) {
+        console.warn("Could not find layout item with field-label='Account Name'.");
+        return 'N/A (Account)';
+    }
+    const nameElement = accountItem.querySelector('force-lookup a');
+    console.log("Account name element found:", !!nameElement);
+    return nameElement ? nameElement.textContent?.trim() : 'N/A (Account)';
+}
+
 async function findCaseDescription() {
     // console.log("Attempting to find Case Description...");
      const descriptionContainer = await waitForElement('article.cPSM_Case_Description');
@@ -472,7 +485,9 @@ async function generateCaseViewHtml(generatedTime) {
   const creatorNamePromise = findCreatorName(); // Async
   const createdDateCaseStrPromise = findCreatedDate(); // Async
   const caseDescriptionPromise = findCaseDescription(); // Async
-
+  const accountNamePromise = findAccountName(); // VB
+    // console.log(`accountName is ${accountNamePromise}`); // VB
+    
   // --- Extract Related Lists Concurrently ---
   console.log("--- Starting Notes & Emails Extraction Concurrently ---");
   const notesPromise = extractAndFetchNotes(); // Async
@@ -480,14 +495,14 @@ async function generateCaseViewHtml(generatedTime) {
 
   // --- Wait for all extractions to complete ---
   const [
-      subject, caseNumber, status, owner, creatorName, createdDateCaseStr, caseDescription,
+      subject, caseNumber, status, owner, creatorName, accountName, createdDateCaseStr, caseDescription,
       notesData, emailsData
   ] = await Promise.all([
-      subjectPromise, caseNumberPromise, statusPromise, ownerPromise, creatorNamePromise, createdDateCaseStrPromise, caseDescriptionPromise,
+      subjectPromise, caseNumberPromise, statusPromise, ownerPromise, creatorNamePromise, accountNamePromise, createdDateCaseStrPromise, caseDescriptionPromise,
       notesPromise, emailsPromise
   ]);
 
-  console.log(`Extraction results: Subject=${!!subject}, Case#=${caseNumber}, Status=${!!status}, Owner=${!!owner}, Creator=${!!creatorName}, CreatedDate=${!!createdDateCaseStr}, Desc=${caseDescription?.length>0}, Notes=${notesData.length}, Emails=${emailsData.length}`);
+  console.log(`Extraction results: Subject=${!!subject}, Case#=${caseNumber}, Status=${!!status}, Owner=${!!owner}, Creator=${!!creatorName}, AccountNamer=${!!accountName},  CreatedDate=${!!createdDateCaseStr}, Desc=${caseDescription?.length>0}, Notes=${notesData.length}, Emails=${emailsData.length}`);
 
 
   // --- Combine and Sort Notes & Emails ---
@@ -585,12 +600,13 @@ async function generateCaseViewHtml(generatedTime) {
     <div class="case-details">
         <h2>Case Details</h2>
         <dl class="case-details-grid">
+            <dt>Case Number:</dt><dd>${safeCaseNumber}</dd> 
+            <dt>Customer Account:</dt><dd>${escapeHtml(accountName || 'N/A')}</dd>
             <dt>Subject:</dt><dd>${safeSubject}</dd>
-            <dt>Status:</dt><dd>${escapeHtml(status || 'N/A')}</dd>
-            <dt>Case Number:</dt><dd>${safeCaseNumber}</dd> {/* Added Case Number here */}
-            <dt>Owner:</dt><dd>${escapeHtml(owner || 'N/A')}</dd>
-            <dt>Created By:</dt><dd>${escapeHtml(creatorName || 'N/A')}</dd>
             <dt>Date Created:</dt><dd>${escapeHtml(createdDateCaseStr || 'N/A')}</dd>
+            <dt>Created By:</dt><dd>${escapeHtml(creatorName || 'N/A')}</dd>
+            <dt>Status:</dt><dd>${escapeHtml(status || 'N/A')}</dd>
+            <dt>Owner:</dt><dd>${escapeHtml(owner || 'N/A')}</dd>
         </dl>
         <div class="case-description-label">Description:</div>
         <div class="description-content">${caseDescription || '<p><i>No description found or extracted.</i></p>'}</div>
@@ -659,7 +675,7 @@ async function generateCaseViewHtml(generatedTime) {
                     ${headerDetails}
                 </div>
                 <div class="item-content">
-                    ${contentHtml} {/* Inject directly if it's HTML, or the escaped error */}
+                    ${contentHtml} 
                 </div>
                 <div class="item-attachments">
                     Attachments: ${escapeHtml(item.attachments || 'N/A')}
