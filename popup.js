@@ -1,7 +1,9 @@
 // Existing listener for generateViewBtn
 document.getElementById('generateViewBtn').addEventListener('click', () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0] && tabs[0].id && tabs[0].url && tabs[0].url.includes('.lightning.force.com/lightning/r/Case/')) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const urlPattern = /\.lightning\.force\.com\/lightning\/r\/(Case|WorkOrder)\//;
+    if (tabs[0]?.id && tabs[0]?.url && urlPattern.test(tabs[0].url)) {
+    // OLD if (tabs[0] && tabs[0].id && tabs[0].url && tabs[0].url.includes('.lightning.force.com/lightning/r/Case/')) {
       // Clear any previous status messages
       const statusDiv = document.getElementById('statusMessage');
       statusDiv.textContent = '';

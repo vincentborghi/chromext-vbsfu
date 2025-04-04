@@ -459,7 +459,15 @@ async function extractAndFetchEmails() {
 
 // --- Main Function to Orchestrate Extraction and Generate HTML ---
 async function generateCaseViewHtml(generatedTime) {
-  console.log("Starting async HTML generation (v50 + Copy Feature + Detail Layout Fix)...");
+    console.log("Starting async HTML generation (v50 + Copy Feature + Detail Layout Fix)...");
+    // ** Detect Object Type **
+    let objectType = 'Record'; // Default
+    if (window.location.href.includes('/Case/')) {
+        objectType = 'Case';
+    } else if (window.location.href.includes('/WorkOrder/')) {
+        objectType = 'WorkOrder';
+    }
+    console.log(`Detected Object Type: ${objectType}`);
 
   // Optional scroll to ensure dynamic content might load, but less critical if using waitForElement robustly
   // console.log("Scrolling to bottom (quick)...");
@@ -605,13 +613,12 @@ async function generateCaseViewHtml(generatedTime) {
     </style>
 </head>
 <body>
-    <h1>Case ${safeCaseNumber}: ${safeSubject}</h1>
+    <h1>${escapeHtml(objectType)} ${safeCaseNumber}: ${safeSubject}</h1>
     <div class="generation-info">Generated: ${escapeHtml(generatedTime)}</div>
 
     <div class="case-details">
-        <h2>Case Details</h2>
         <dl class="case-details-grid">
-            <dt>Case Number:</dt><dd>${safeCaseNumber}</dd> 
+            <dt>${escapeHtml(objectType)}:</dt><dd>${safeCaseNumber}</dd> 
             <dt>Customer Account:</dt><dd>${escapeHtml(accountName || 'N/A')}</dd>
             <dt>Subject:</dt><dd>${safeSubject}</dd>
             <dt>Date Created:</dt><dd>${escapeHtml(createdDateCaseStr || 'N/A')}</dd>
@@ -622,7 +629,15 @@ async function generateCaseViewHtml(generatedTime) {
         <div class="case-description-label">Description:</div>
         <div class="description-content">${caseDescription || '<p><i>No description found or extracted.</i></p>'}</div>
     </div>
-
+<!--
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.9rem;">
+  <div><strong>Subject:</strong> ${safeSubject}</div>
+  <div><strong>Date Created:</strong> ${escapeHtml(createdDateCaseStr || 'N/A')}</div>
+  <div><strong>Created By:</strong> ${escapeHtml(creatorName || 'N/A')}</div>
+  <div><strong>Status:</strong> ${escapeHtml(status || 'N/A')}</div>
+  <div><strong>Owner:</strong> ${escapeHtml(owner || 'N/A')}</div>
+</div>
+-->
     <h2>Notes and Emails (${allItems.length} items)</h2>
 `;
 

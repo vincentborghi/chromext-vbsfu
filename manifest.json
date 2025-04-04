@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Salesforce Case Full View",
-  "version": "2.0", // 20250403
+  "version": "2.1", // 20250404 WorkOrder handled
   "description": "Displays Salesforce Case details and feed items (Notes via Tab Automation).",
   "permissions": [
     "activeTab",
@@ -28,7 +28,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.lightning.force.com/lightning/r/Case/*"],
+	"matches": ["*://*.lightning.force.com/lightning/r/Case/*",
+                    "*://*.lightning.force.com/lightning/r/WorkOrder/*"
+		   ],
       "js": ["content.js"] 
     }
   ]
