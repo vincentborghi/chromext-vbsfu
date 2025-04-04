@@ -93,9 +93,17 @@ async function fetchAllDetailsViaTabs(itemsToFetch, itemType, senderTabId) {
                  console.log(`Background: Processing result for ${itemUrl}.`);
                  const parsedDate = parseDateString(itemInfo.dateStr); // Use date from TABLE
                  if (itemType === 'Note') {
-                     resultsMap[itemUrl] = { description: scrapeResult.description || '', dateObject: parsedDate };
+                     resultsMap[itemUrl] = { description: scrapeResult.description || '',
+					     dateObject: parsedDate,
+					     isPublic: scrapeResult.isPublic // VB
+					   };
                  } else { // Email
-                      resultsMap[itemUrl] = { description: scrapeResult.bodyHTML || '', dateObject: parsedDate, subject: scrapeResult.subject || '', from: scrapeResult.from || '', to: scrapeResult.to || '' };
+                     resultsMap[itemUrl] = { description: scrapeResult.bodyHTML || '',
+					     dateObject: parsedDate, subject: scrapeResult.subject || '',
+					     from: scrapeResult.from || '',
+					     to: scrapeResult.to || '',
+                                             isPublic: null // <<< Email visibility still TBD
+					   };
                  }
             } else { throw new Error("Scrape result was null/undefined."); }
         } catch (error) {

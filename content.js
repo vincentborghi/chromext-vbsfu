@@ -332,6 +332,7 @@ async function extractAndFetchNotes() {
           dateStr: noteInfo.dateStr, // Keep original string for display if needed
           dateObject: finalDateObject, // Parsed date object for sorting
           content: finalDescription || '[Content Not Fetched]', // Use fetched content
+          isPublic: fetched?.isPublic ?? null, // VB
           attachments: 'N/A' // Placeholder
         };
       }).filter(note => note.dateObject !== null); // Filter out notes where date parsing failed entirely
@@ -441,7 +442,8 @@ async function extractAndFetchEmails() {
           to: fetched?.to || emailInfo.to, // Use fetched to if available
           dateStr: emailInfo.dateStr,
           dateObject: finalDateObject,
-          content: finalContent, // Use fetched content (HTML body)
+            content: finalContent, // Use fetched content (HTML body)
+	    isPublic: fetched?.isPublic ?? null,  // VB
           attachments: 'N/A' // Placeholder
         };
       }).filter(email => email.dateObject !== null); // Filter out emails where date parsing failed
@@ -591,6 +593,15 @@ async function generateCaseViewHtml(generatedTime) {
         .item-content blockquote { border-left: 3px solid #ccc; padding-left: 10px; margin-left: 5px; color: #666; font-style: italic; }
         .item-attachments { font-style: italic; color: #888; font-size: 0.85em; margin-top: 10px; }
         .error-message { color: red; font-weight: bold; background-color: #ffebeb; border: 1px solid red; padding: 5px; border-radius: 3px;}
+
+.item-visibility {
+    margin-left: 8px;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: lowercase;
+}
+.item-visibility.public { color: #8e1b03;}
+.item-visibility.internal { color: black; }
     </style>
 </head>
 <body>
@@ -638,6 +649,13 @@ async function generateCaseViewHtml(generatedTime) {
 
             let headerDetails = '';
             let formattedTimestamp = 'N/A';
+	    let visibilityLabel = '';
+            if (item.isPublic === true) {
+                  visibilityLabel = '<span class="item-visibility public">(public)</span>';
+            } else if (item.isPublic === false) { // Only show if explicitly internal
+                  visibilityLabel = '<span class="item-visibility internal">(internal)</span>';
+            }
+            // Note: Emails will currently show nothing as item.isPublic will be null
             try {
                 if (item.dateObject && !isNaN(item.dateObject.getTime())) {
                     // Use locale string for better readability
@@ -669,10 +687,11 @@ async function generateCaseViewHtml(generatedTime) {
             html += `
             <div class="timeline-item ${itemTypeClass}">
                 <div class="item-header">
-                    <span class="item-timestamp">[${formattedTimestamp}]</span>
-                    <strong class="item-type-label ${itemTypeClass}">${itemTypeLabel}</strong>:
+                    <strong class="item-type-label ${itemTypeClass}">${itemTypeLabel}</strong>
+                    ${visibilityLabel}
+                    <span class="item-timestamp">[${formattedTimestamp}]</span> -
                     <span class="item-subject-title">${itemTitle}</span>
-                    ${headerDetails}
+                     ${headerDetails}
                 </div>
                 <div class="item-content">
                     ${contentHtml} 

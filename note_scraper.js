@@ -34,6 +34,7 @@ async function scrapeNoteDetails() {
     console.log("Note Scraper: Starting scrapeNoteDetails.");
     let description = null;
     let createdDateText = null;
+    let isPublic = false; // VB Default to internal/false
 
     try {
         // --- Extract Description ---
@@ -57,6 +58,30 @@ async function scrapeNoteDetails() {
             console.warn("Note Scraper: Description layout item not found.");
             description = "N/A (Description Container Not Found)";
         }
+
+        // VB BEGIN
+	// --- Extract Visibility ---
+	console.log("Note Scraper: Looking for Visibility checkbox...");
+	const visibilityItem = await waitForElement('records-record-layout-item[field-label="Visible to Customer"]');
+	if (visibilityItem) {
+	    const checkbox = visibilityItem.querySelector('input[type="checkbox"]');
+	    if (checkbox) {
+		isPublic = checkbox.checked; // Check the element's property
+		console.log("Note Scraper: Visibility checkbox found. Is checked (public)?", isPublic);
+	    } else {
+		// Fallback for lightning-input component (less common for readonly view but possible)
+		const inputComponent = visibilityItem.querySelector('lightning-input');
+		if (inputComponent && inputComponent.hasAttribute('checked')) {
+		    isPublic = true;
+		    console.log("Note Scraper: Visibility lightning-input has 'checked' attribute. Setting isPublic=true");
+		} else {
+		    console.warn("Note Scraper: Visibility checkbox/input not found/checked.");
+		}
+	    }
+	} else {
+	    console.warn("Note Scraper: Visibility layout item [field-label='Visible to Customer'] not found.");
+	}
+        // VB END
 
         // --- Extract Created Date ---
         // Wait for the 'Created By' item container
@@ -100,7 +125,8 @@ async function scrapeNoteDetails() {
     chrome.runtime.sendMessage({
         type: 'noteScrapeResult',
         description: description ?? '', // Ensure string even if null
-        createdDateText: createdDateText // Send raw text for parsing in background
+        createdDateText: createdDateText, // Send raw text for parsing in background
+	isPublic: isPublic // VB
     });
 }
 
