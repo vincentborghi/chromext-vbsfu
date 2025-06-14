@@ -4,11 +4,11 @@
     --vbsfu-panel-bg: #fdfdff;
     --vbsfu-border-color: #d1d1e0;
     --vbsfu-shadow-color: rgba(0, 0, 0, 0.15);
-    --vbsfu-title-color: #005a9e;
-    --vbsfu-button-bg: #e9efff;
-    --vbsfu-button-hover-bg: #dce5ff;
-    --vbsfu-button-text: #003366;
-    --vbsfu-button-border: #b0c4ff;
+    --vbsfu-title-color: #005a9e; /* Title remains blue for contrast */
+    --vbsfu-button-bg: #fff9e0; /* Light yellow */
+    --vbsfu-button-hover-bg: #fff3c4; /* Darker yellow */
+    --vbsfu-button-text: #5e4d03; /* Dark brown/gold for text */
+    --vbsfu-button-border: #fce8a9; /* Yellow border */
     --vbsfu-status-success: #006421;
     --vbsfu-status-error: #c70000;
     --vbsfu-status-warn: #b55f00;
@@ -42,7 +42,7 @@
 
 #vbsfu-header {
     cursor: grab;
-    background-color: #f0f5ff;
+    background-color: var(--vbsfu-button-hover-bg); /* Use darker yellow for header */
     padding: 8px 12px;
     text-align: center;
     border-bottom: 1px solid var(--vbsfu-border-color);
@@ -115,6 +115,7 @@
 
 #vbsfu-status {
     font-size: 14px;
+    font-weight: 600;
     margin-top: 8px;
     text-align: center;
     min-height: 1.2em;

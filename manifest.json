@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Salesforce for PSM Helper",
   "version": "2.3",
-  "description": "Displays PSM Salesforce Case or WorkOrder details, with a movable panel.",
+  "description": "Provides several functions to circumvent some PSM Salesforce annoyances.",
   "permissions": [
     "scripting"
   ],
