@@ -7,7 +7,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://myatos.my.lightning.force.com/*"
+    "*://myatos.lightning.force.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -28,8 +28,8 @@
   "content_scripts": [
     {
       "matches": [
-        "*://myatos.my.lightning.force.com/lightning/r/Case/*",
-        "*://myatos.my.lightning.force.com/lightning/r/WorkOrder/*"
+        "*://myatos.lightning.force.com/lightning/r/Case/*",
+        "*://myatos.lightning.force.com/lightning/r/WorkOrder/*"
       ],
       "js": [
         "content.js",

@@ -302,7 +302,7 @@ async function extractAndFetchNotes() {
             if (finalDescription && finalDescription.startsWith('Error:')) {
                 finalDescription = `[Fetch Error]`;
             } else if (!finalDescription) {
-                finalDescription = '[Content Not Fetched]';
+                finalDescription = '[Description Empty or Not Fetched]';
             }
             return {
                 ...noteInfo, dateObject: finalDateObject, content: finalDescription,
@@ -447,6 +447,7 @@ async function generateCaseViewHtml(generatedTime) {
     const safeRecordNumber = escapeHtml(recordNumber || 'N/A');
     const safeSubject = escapeHtml(subject || 'N/A');
     const safeObjectType = escapeHtml(objectType);
+    const safeAccountName = escapeHtml(accountName || 'N/A');
 
     let htmlOutput = `
 <!DOCTYPE html>
@@ -459,7 +460,9 @@ async function generateCaseViewHtml(generatedTime) {
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.4; padding: 15px 25px; margin: 0; color: #333; background-color: #f9f9f9; }
         h1, h2 { border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-top: 25px; margin-bottom: 15px; color: #1a5f90; font-weight: 600; }
         h1 { font-size: 1.7em; } h2 { font-size: 1.4em; }
-        .generation-info { font-size: 0.8em; color: #777; margin-bottom: 20px; text-align: right; }
+        .meta-info-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 25px; border-radius: 5px; background-color: #eef3f8; border: 1px solid #d1e0ee; }
+        .customer-account-info { font-size: 1.1em; font-weight: 600; color: #005a9e; }
+        .generation-info { font-size: 0.85em; color: #555; }
         .record-details { background-color: #fff; border: 1px solid #e1e5eb; padding: 15px 20px; border-radius: 5px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .record-details h2 { margin-top: 0; margin-bottom: 12px; }
         .details-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin-bottom: 15px; align-items: start; }
@@ -493,13 +496,15 @@ async function generateCaseViewHtml(generatedTime) {
 </head>
 <body>
     <h1>${safeObjectType} ${safeRecordNumber}: ${safeSubject}</h1>
-    <div class="generation-info">Generated: ${escapeHtml(generatedTime)}</div>
+    
+    <div class="meta-info-bar">
+        <div class="customer-account-info"><strong>Customer Account:</strong> ${safeAccountName}</div>
+        <div class="generation-info">Generated: ${escapeHtml(generatedTime)}</div>
+    </div>
+
     <div class="record-details">
-        <h2>Details</h2>
+        <!-- <h2>Details</h2> -->
         <dl class="details-grid">
-            <dt>${safeObjectType}:</dt><dd>${safeRecordNumber}</dd>
-            <dt>Customer Account:</dt><dd>${escapeHtml(accountName || 'N/A')}</dd>
-            <dt>Subject:</dt><dd>${safeSubject}</dd>
             <dt>Date Created:</dt><dd>${escapeHtml(createdDateStr || 'N/A')}</dd>
             <dt>Created By:</dt><dd>${escapeHtml(creatorName || 'N/A')}</dd>
             <dt>Status:</dt><dd>${escapeHtml(status || 'N/A')}</dd>
