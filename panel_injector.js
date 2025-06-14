@@ -216,7 +216,7 @@ function injectUI() {
     const modalBody = document.createElement('div');
     modalBody.id = 'vbsfu-modal-body';
     const extensionVersion = chrome.runtime.getManifest().version;
-    modalBody.innerHTML = `<p><strong>Version:</strong> ${extensionVersion}</p><p>This Chrome extension is epxerimental. For information or feedback, contact Vincent Borghi.</p>`;
+    modalBody.innerHTML = `<p><strong>Version:</strong> ${extensionVersion}</p><p>This Chrome extension is experimental. For information or feedback, contact Vincent Borghi.</p>`;
     modalContent.appendChild(modalClose);
     modalContent.appendChild(modalTitle);
     modalContent.appendChild(modalBody);
