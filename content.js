@@ -7,7 +7,7 @@ console.log("Salesforce Full View: Core Logic Loaded.");
  * Waits for an element matching the selector to appear in the DOM.
  * Returns a promise that resolves with the element or null if timed out.
  */
-function waitForElement(selector, baseElement = document, timeout = 15000) {
+function waitForElement(selector, baseElement = document, timeout = 8000) {
   // console.log(`Waiting for "${selector}"...`); // Optional logging
   return new Promise((resolve) => {
     const startTime = Date.now();
@@ -490,10 +490,15 @@ async function generateCaseViewHtml(generatedTime) {
         .details-grid dd { grid-column: 2; margin-left: 0; word-wrap: break-word; text-align: left; }
         .description-label { font-weight: 600; color: #005fb2; margin-bottom: 5px; display: block; }
         .record-details .description-content { white-space: pre-wrap; word-wrap: break-word; margin-top: 0px; padding: 10px 12px; background-color: #f1f1f1; border-radius: 4px; font-size: 0.95em; max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; }
+        .timeline-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 15px; }
+        .timeline-header h2 { margin: 0; border: none; padding: 0; }
+        #toggle-all-timeline { cursor: pointer; font-size: 0.9em; color: #007bff; text-decoration: none; }
+        #toggle-all-timeline:hover { text-decoration: underline; }
         .timeline-item { border: 1px solid #e1e5eb; padding: 12px 18px; margin-bottom: 10px; border-radius: 5px; background-color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); position: relative; }
         .timeline-item.type-note { border-left: 5px solid #6b92dc; }
         .timeline-item.type-email { border-left: 5px solid #5cb85c; }
-        .item-header { font-size: 0.95em; color: #444; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 6px; line-height: 1.4; }
+        .item-header { font-size: 0.95em; color: #444; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 6px; line-height: 1.4; background-color: #fffbe6; cursor: pointer; }
+        .timeline-item.collapsed .item-content, .timeline-item.collapsed .item-attachments { display: none; }
         .item-timestamp { color: #555; font-family: monospace; margin-right: 10px; font-weight: bold; font-size: 1.2em; background-color:#f0f0f0; padding: 1px 4px; border-radius: 3px; }
         .item-type-label { font-weight: bold; text-transform: uppercase; font-size: 0.85em; margin-right: 5px; }
         .item-type-label.type-note { color: #6b92dc; }
@@ -533,7 +538,10 @@ async function generateCaseViewHtml(generatedTime) {
         <div class="description-label">Description:</div>
         <div class="description-content">${description || '<p><i>Description empty or not found.</i></p>'}</div>
     </div>
-    <h2>Timeline (${allTimelineItems.length} items)</h2>
+    <div class="timeline-header">
+        <h2>Timeline (${allTimelineItems.length} items)</h2>
+        <a href="#" id="toggle-all-timeline">Collapse All</a>
+    </div>
 `;
 
     if (allTimelineItems.length === 0) {
@@ -574,7 +582,7 @@ async function generateCaseViewHtml(generatedTime) {
                 : `<span class="item-meta"><span class="item-meta-label">By:</span> <span class="item-meta-info"><strong>${itemAuthor}</strong></span></span>`;
 
             htmlOutput += `
-            <div class="timeline-item ${itemTypeClass}">
+            <div class="timeline-item">
                 <div class="item-header">
                     <strong class="item-type-label ${itemTypeClass}">${itemTypeLabel}</strong>
                     ${visibilityLabel} <span class="item-timestamp">[${formattedTimestamp}]</span> -
@@ -587,7 +595,41 @@ async function generateCaseViewHtml(generatedTime) {
         });
     }
 
-    htmlOutput += `</body></html>`;
+    htmlOutput += `
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const headers = document.querySelectorAll('.item-header');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    header.closest('.timeline-item').classList.toggle('collapsed');
+                });
+            });
+
+            const toggleAllButton = document.getElementById('toggle-all-timeline');
+            if (toggleAllButton) {
+                toggleAllButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const timelineItems = document.querySelectorAll('.timeline-item');
+                    if (timelineItems.length === 0) return;
+
+                    // Check if we should collapse or expand based on the state of the first item
+                    const shouldCollapse = !timelineItems[0].classList.contains('collapsed');
+                    
+                    timelineItems.forEach(item => {
+                        if (shouldCollapse) {
+                            item.classList.add('collapsed');
+                        } else {
+                            item.classList.remove('collapsed');
+                        }
+                    });
+
+                    // Update button text
+                    e.target.textContent = shouldCollapse ? 'Expand All' : 'Collapse All';
+                });
+            }
+        });
+    </script>
+</body></html>`;
     console.log("HTML generation complete.");
     return htmlOutput;
 }
@@ -615,6 +657,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 statusDiv.style.color = 'green';
             }
             chrome.runtime.sendMessage({ action: "openFullViewTab", htmlContent: fullHtml });
+
+            // After a delay, reset the status message to indicate completion.
+            setTimeout(() => {
+                const currentStatusDiv = document.getElementById('vbsfu-status');
+                if (currentStatusDiv) {
+                    currentStatusDiv.textContent = 'Ready.';
+                    currentStatusDiv.style.color = ''; // Reset to default CSS color
+                }
+            }, 4000); // 4-second delay
           })
           .catch(error => {
             console.error("Content Script: Error during HTML generation:", error);
