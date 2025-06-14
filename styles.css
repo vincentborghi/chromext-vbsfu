@@ -1,0 +1,189 @@
+/* styles.css - Styles for the VB Salesforce Utilities panel */
+
+:root {
+    --vbsfu-panel-bg: #fdfdff;
+    --vbsfu-border-color: #d1d1e0;
+    --vbsfu-shadow-color: rgba(0, 0, 0, 0.15);
+    --vbsfu-title-color: #005a9e;
+    --vbsfu-button-bg: #e9efff;
+    --vbsfu-button-hover-bg: #dce5ff;
+    --vbsfu-button-text: #003366;
+    --vbsfu-button-border: #b0c4ff;
+    --vbsfu-status-success: #006421;
+    --vbsfu-status-error: #c70000;
+    --vbsfu-status-warn: #b55f00;
+    --vbsfu-modal-bg: #ffffff;
+    --vbsfu-modal-overlay: rgba(0, 0, 0, 0.4);
+}
+
+#vbsfu-panel {
+    position: fixed;
+    top: 100px;
+    right: -240px; /* Start hidden */
+    width: 220px;
+    z-index: 2147483646; /* One less than the modal overlay */
+    background-color: var(--vbsfu-panel-bg);
+    border: 1px solid var(--vbsfu-border-color);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    box-shadow: -3px 4px 12px var(--vbsfu-shadow-color);
+    transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: 8px;
+}
+
+#vbsfu-panel.vbsfu-visible {
+    right: 0;
+}
+
+#vbsfu-header {
+    cursor: grab;
+    background-color: #f0f5ff;
+    padding: 8px 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--vbsfu-border-color);
+    border-radius: 8px 0 0 0;
+}
+
+#vbsfu-header:active {
+    cursor: grabbing;
+}
+
+#vbsfu-panel h4 {
+    margin: 0;
+    color: var(--vbsfu-title-color);
+    font-weight: 600;
+    user-select: none;
+}
+
+#vbsfu-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.vbsfu-button {
+    padding: 10px 12px;
+    cursor: pointer;
+    border: 1px solid var(--vbsfu-button-border);
+    background-color: var(--vbsfu-button-bg);
+    color: var(--vbsfu-button-text);
+    border-radius: 5px;
+    font-size: 14px;
+    text-align: center;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.vbsfu-button:hover, #vbsfu-toggle:hover {
+    background-color: var(--vbsfu-button-hover-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.vbsfu-button:disabled {
+    cursor: not-allowed;
+    background-color: #f0f0f0;
+    color: #999;
+    border-color: #ddd;
+}
+
+#vbsfu-toggle {
+    position: fixed;
+    top: 100px;
+    right: 15px;
+    z-index: 2147483646;
+    padding: 10px;
+    cursor: pointer;
+    border: 1px solid var(--vbsfu-button-border);
+    background-color: var(--vbsfu-button-bg);
+    color: var(--vbsfu-button-text);
+    border-radius: 50%;
+    font-size: 20px;
+    line-height: 1;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px var(--vbsfu-shadow-color);
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+#vbsfu-status {
+    font-size: 14px;
+    margin-top: 8px;
+    text-align: center;
+    min-height: 1.2em;
+    padding: 0 10px;
+}
+
+/* --- Modal Styles --- */
+#vbsfu-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--vbsfu-modal-overlay);
+    z-index: 2147483647; /* Highest z-index */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0s 0.3s;
+}
+
+#vbsfu-modal-overlay.vbsfu-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s;
+}
+
+#vbsfu-modal-content {
+    background-color: var(--vbsfu-modal-bg);
+    padding: 25px 30px;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+#vbsfu-modal-overlay.vbsfu-visible #vbsfu-modal-content {
+    transform: scale(1);
+}
+
+#vbsfu-modal-content h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--vbsfu-title-color);
+    font-size: 1.3em;
+}
+
+#vbsfu-modal-body {
+    margin-bottom: 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+#vbsfu-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #888;
+    padding: 5px;
+}
+#vbsfu-modal-close:hover {
+    color: #333;
+}
