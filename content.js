@@ -1,4 +1,4 @@
-// content.js - Complete File (v53 - Refactored Core Logic)
+// content.js - Complete File (v54 - Context-Aware Scraping)
 
 console.log("Salesforce Full View: Core Logic Loaded.");
 
@@ -31,12 +31,12 @@ function waitForElement(selector, baseElement = document, timeout = 15000) {
  * @param {Element} statusDiv - The UI element for status updates.
  * @returns {Promise<boolean>} - True if the element was found and scrolled to.
  */
-async function scrollIntoViewAndWait(selector, statusDiv) {
+async function scrollIntoViewAndWait(selector, statusDiv, baseElement = document) {
     console.log(`Ensuring visibility for: ${selector}`);
     if (statusDiv) {
          statusDiv.textContent = `Loading section...`;
     }
-    const element = await waitForElement(selector);
+    const element = await waitForElement(selector, baseElement);
     if (element) {
         console.log(`Found element for ${selector}. Scrolling into view.`);
         element.scrollIntoView({ behavior: 'auto', block: 'center' });
@@ -138,7 +138,7 @@ function waitForTableUpdate(targetNode, timeout = 10000) {
 }
 
 
-// --- Functions to Extract Salesforce Record Details ---
+// --- Functions to Extract Salesforce Record Details (NOW CONTEXT-AWARE) ---
 function findSubjectInContainer(container) {
     if (!container) return 'N/A';
     const element = container.querySelector('support-output-case-subject-field lightning-formatted-text');
@@ -160,11 +160,11 @@ function findCaseNumberInContainer(container) {
      return 'N/A (Case #)';
 }
 
-function findCaseNumberSpecific() {
+function findCaseNumberSpecific(baseElement) {
     console.log("Content Script: Attempting to find Case/Record Number (Specific Selector)...");
     const itemSelector = 'records-highlights-details-item:has(p[title="Case Number"])';
     const textSelector = 'lightning-formatted-text';
-    const detailsItem = document.querySelector(itemSelector);
+    const detailsItem = baseElement.querySelector(itemSelector);
 
     if (detailsItem) {
         const textElement = detailsItem.querySelector(textSelector);
@@ -177,7 +177,7 @@ function findCaseNumberSpecific() {
         }
     }
     console.warn("Content Script: Record Number details item not found. Falling back...");
-    const container = document.querySelector('records-highlights2');
+    const container = baseElement.querySelector('records-highlights2');
     const fallbackRecordNum = findCaseNumberInContainer(container);
     if (fallbackRecordNum && !fallbackRecordNum.startsWith('N/A')) {
         return fallbackRecordNum;
@@ -192,15 +192,15 @@ function findStatusInContainer(container) {
     return element ? element.textContent?.trim() : 'N/A (Status)';
 }
 
-async function findCreatorName() {
-    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]');
+async function findCreatorName(baseElement) {
+    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]', baseElement);
     if (!createdByItem) { return 'N/A (Creator)'; }
     const nameElement = createdByItem.querySelector('force-lookup a');
     return nameElement ? nameElement.textContent?.trim() : 'N/A (Creator)';
 }
 
-async function findCreatedDate() {
-    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]');
+async function findCreatedDate(baseElement) {
+    const createdByItem = await waitForElement('records-record-layout-item[field-label="Created By"]', baseElement);
     if (!createdByItem) { return 'N/A (Created Date)'; }
     const dateElement = createdByItem.querySelector('records-modstamp lightning-formatted-text');
     return dateElement ? dateElement.textContent?.trim() : 'N/A (Created Date)';
@@ -213,8 +213,8 @@ function findOwnerInContainer(container) {
      return element ? element.textContent?.trim() : 'N/A (Owner)';
 }
 
-async function findAccountName() {
-    const accountItem = await waitForElement('records-record-layout-item[field-label="Account Name"]');
+async function findAccountName(baseElement) {
+    const accountItem = await waitForElement('records-record-layout-item[field-label="Account Name"]', baseElement);
     if (!accountItem) {
         return 'N/A (Account)';
     }
@@ -222,8 +222,8 @@ async function findAccountName() {
     return nameElement ? nameElement.textContent?.trim() : 'N/A (Account)';
 }
 
-async function findCaseDescription() {
-     const descriptionContainer = await waitForElement('article.cPSM_Case_Description');
+async function findCaseDescription(baseElement) {
+     const descriptionContainer = await waitForElement('article.cPSM_Case_Description', baseElement);
      if (!descriptionContainer) { return ''; }
      let textElement = descriptionContainer.querySelector('lightning-formatted-text.txtAreaReadOnly') || descriptionContainer.querySelector('lightning-formatted-text');
      if (!textElement) { return ''; }
@@ -240,10 +240,10 @@ async function findCaseDescription() {
      return descriptionHTML;
 }
 
-// --- Function to Extract Note URLs from Table and Trigger Fetch ---
-async function extractAndFetchNotes() {
+// --- Function to Extract Note URLs from Table and Trigger Fetch (CONTEXT-AWARE) ---
+async function extractAndFetchNotes(baseElement) {
     const notesHeaderSelector = 'a.slds-card__header-link[href*="/related/PSM_Notes__r/view"]';
-    const headerLinkElement = await waitForElement(notesHeaderSelector);
+    const headerLinkElement = await waitForElement(notesHeaderSelector, baseElement);
     if (!headerLinkElement) { console.warn("Notes header not found. Skipping notes."); return []; }
 
     const listManager = headerLinkElement.closest('lst-related-list-view-manager');
@@ -315,10 +315,10 @@ async function extractAndFetchNotes() {
 }
 
 
-// --- Function to Extract Email Info from Table and Trigger Fetch ---
-async function extractAndFetchEmails() {
+// --- Function to Extract Email Info from Table and Trigger Fetch (CONTEXT-AWARE) ---
+async function extractAndFetchEmails(baseElement) {
     const emailsListContainerSelector = 'div.forceListViewManager[aria-label*="Emails"]';
-    const emailsListContainer = await waitForElement(emailsListContainerSelector);
+    const emailsListContainer = await waitForElement(emailsListContainerSelector, baseElement);
     if (!emailsListContainer) { console.warn("Emails container not found. Skipping emails."); return []; }
 
     const countSpan = emailsListContainer.querySelector('a.slds-card__header-link span[title*="("]');
@@ -392,34 +392,54 @@ async function extractAndFetchEmails() {
 }
 
 
-// --- Main Function to Orchestrate Extraction and Generate HTML ---
+// --- Main Function to Orchestrate Extraction and Generate HTML (CONTEXT-AWARE) ---
 async function generateCaseViewHtml(generatedTime) {
-    console.log("Starting async HTML generation...");
+    // 1. Find the currently active tab button to get the context.
+    const activeTabButton = await waitForElement('li.slds-is-active[role="presentation"] a[role="tab"]');
+    if (!activeTabButton) {
+        console.error("FATAL: Could not find the active Salesforce tab button.");
+        return `<html><head><title>Error</title></head><body><h1>Extraction Error</h1><p>Could not find the active Salesforce tab to generate the view from. Is a Case tab currently selected?</p></body></html>`;
+    }
+    
+    // 2. Get the ID of the content panel from the button.
+    const panelId = activeTabButton.getAttribute('aria-controls');
+    if (!panelId) {
+        console.error("FATAL: Active tab button has no 'aria-controls' ID.");
+        return `<html><head><title>Error</title></head><body><h1>Extraction Error</h1><p>Could not identify the content panel for the active tab.</p></body></html>`;
+    }
+
+    // 3. Get the content panel element itself. This is our base element for all searches.
+    const activeTabPanel = document.getElementById(panelId);
+    if (!activeTabPanel) {
+        console.error(`FATAL: Could not find tab panel with ID: ${panelId}`);
+        return `<html><head><title>Error</title></head><body><h1>Extraction Error</h1><p>Could not find the content for the active tab (ID: ${panelId}).</p></body></html>`;
+    }
+
+    console.log("Starting async HTML generation for the active tab...");
     let objectType = 'Record';
     const currentHref = window.location.href;
     if (currentHref.includes('/Case/')) objectType = 'Case';
     else if (currentHref.includes('/WorkOrder/')) objectType = 'WorkOrder';
     console.log(`Detected Object Type: ${objectType}`);
 
-    const HIGHLIGHTS_CONTAINER_SELECTOR = 'records-highlights2';
-    const highlightsContainerElement = await waitForElement(HIGHLIGHTS_CONTAINER_SELECTOR);
+    const highlightsContainerElement = await waitForElement('records-highlights2', activeTabPanel);
     if (!highlightsContainerElement) {
-      console.error(`FATAL: Highlights container not found.`);
+      console.error(`FATAL: Highlights container not found in the active tab.`);
       return `<html><head><title>Error</title></head><body><h1>Extraction Error</h1><p>Could not find the main details section on the page.</p></body></html>`;
     }
 
-    console.log("Extracting header details and related lists concurrently...");
+    console.log("Extracting header details and related lists from the active tab...");
     const extractionPromises = [
         Promise.resolve(findSubjectInContainer(highlightsContainerElement)),
-        Promise.resolve(findCaseNumberSpecific()),
+        Promise.resolve(findCaseNumberSpecific(activeTabPanel)),
         Promise.resolve(findStatusInContainer(highlightsContainerElement)),
         Promise.resolve(findOwnerInContainer(highlightsContainerElement)),
-        findCreatorName(),
-        findAccountName(),
-        findCreatedDate(),
-        findCaseDescription(),
-        extractAndFetchNotes(),
-        extractAndFetchEmails()
+        findCreatorName(activeTabPanel),
+        findAccountName(activeTabPanel),
+        findCreatedDate(activeTabPanel),
+        findCaseDescription(activeTabPanel),
+        extractAndFetchNotes(activeTabPanel),
+        extractAndFetchEmails(activeTabPanel)
     ];
 
     const [
@@ -503,7 +523,7 @@ async function generateCaseViewHtml(generatedTime) {
     </div>
 
     <div class="record-details">
-        <!-- <h2>Details</h2> -->
+        <h2>Details</h2>
         <dl class="details-grid">
             <dt>Date Created:</dt><dd>${escapeHtml(createdDateStr || 'N/A')}</dd>
             <dt>Created By:</dt><dd>${escapeHtml(creatorName || 'N/A')}</dd>
@@ -612,12 +632,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === "getCaseNumberAndUrl") {
-        const recordNumber = findCaseNumberSpecific();
+        // Use the active tab as the context for finding the case number
+        const activeTabButton = document.querySelector('li.slds-is-active[role="presentation"] a[role="tab"]');
+        if (!activeTabButton) {
+             sendResponse({ status: "error", message: "Could not find active tab button." });
+             return false;
+        }
+        const panelId = activeTabButton.getAttribute('aria-controls');
+        const activeTabPanel = panelId ? document.getElementById(panelId) : null;
+        
+        const recordNumber = activeTabPanel ? findCaseNumberSpecific(activeTabPanel) : null;
         const currentUrl = window.location.href;
         if (recordNumber) {
           sendResponse({ status: "success", caseNumber: recordNumber, url: currentUrl });
         } else {
-          sendResponse({ status: "error", message: "Could not find Record Number." });
+          sendResponse({ status: "error", message: "Could not find Record Number in active tab." });
         }
         return false;
     }
