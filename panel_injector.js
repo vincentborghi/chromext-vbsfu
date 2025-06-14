@@ -161,7 +161,7 @@ function injectUI() {
     const header = document.createElement('div');
     header.id = 'vbsfu-header';
     const title = document.createElement('h4');
-    title.textContent = 'VB SF Utils';
+    title.textContent = 'Helper for PSM Salesforce';
     header.appendChild(title);
 
     const content = document.createElement('div');
