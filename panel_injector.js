@@ -7,10 +7,10 @@ console.log("Salesforce Full View: UI Panel Injector Loaded.");
  * Waits for an element matching the selector to appear in the DOM.
  * @param {string} selector - CSS selector
  * @param {Element} [baseElement=document] - Base element
- * @param {number} [timeout=15000] - Timeout in ms
+ * @param {number} [timeout=8000] - Timeout in ms (lowered as requested).
  * @returns {Promise<Element|null>}
  */
-function waitForElement(selector, baseElement = document, timeout = 15000) {
+function waitForElement(selector, baseElement = document, timeout = 8000) {
     return new Promise((resolve) => {
         const startTime = Date.now();
         const interval = setInterval(() => {
@@ -35,6 +35,7 @@ function waitForElement(selector, baseElement = document, timeout = 15000) {
 async function injectCustomHeaderInfo() {
     console.log('VBSFU: "Show Key Info" button clicked. Attempting to inject info...');
     const statusDiv = document.getElementById('vbsfu-status');
+    statusDiv.textContent = 'Gathering info...';
     
     // Find the currently active Salesforce tab button to reliably get the panel ID.
     const activeTabButton = await waitForElement('li.slds-is-active[role="presentation"] a[role="tab"]');
@@ -79,49 +80,35 @@ async function injectCustomHeaderInfo() {
     if (!infoContainer) {
         infoContainer = document.createElement('div');
         infoContainer.className = 'vbsfu-custom-info-container';
-        infoContainer.style.cssText = `
-            padding: 10px;
-            margin: 10px 0;
-            border-top: 1px solid #dddbda;
-            border-bottom: 1px solid #dddbda;
-        `;
-        // Insert the container right after the anchor element.
+        infoContainer.style.cssText = `padding: 10px; margin: 10px 0; border-top: 1px solid #dddbda; border-bottom: 1px solid #dddbda;`;
         anchorElement.insertAdjacentElement('afterend', infoContainer);
     }
     
-    // --- Inject Account Name ---
-    // Clear previous content to ensure it's fresh, but only if we are re-injecting.
-    infoContainer.innerHTML = ''; 
+    // --- Build the info string ---
+    let infoParts = [];
     
+    // Get Account Name
     const accountItemContainer = await waitForElement('records-record-layout-item[field-label="Account Name"]', activeTabPanel);
     if (accountItemContainer) {
         const accountNameElement = accountItemContainer.querySelector('force-lookup a');
         const accountName = accountNameElement?.textContent?.trim();
-
         if (accountName) {
-            const accountDisplay = document.createElement('div');
-            accountDisplay.className = 'vbsfu-account-header-display';
-            accountDisplay.style.cssText = `
-                font-size: 1.1em;
-                font-weight: 600;
-                color: #664d03;
-                background-color: #fffbe6;
-                padding: 8px 14px;
-                border-radius: 6px;
-                border-left: 5px solid #ffc107;
-            `;
-            accountDisplay.textContent = `Account: ${accountName}`;
-            infoContainer.appendChild(accountDisplay); // Append to our container
-            console.log(`VBSFU: Successfully displayed Account Name "${accountName}"`);
-            if (statusDiv) statusDiv.textContent = 'Key info shown.';
-        } else {
-             console.log('VBSFU: Could not extract Account Name text.');
-             if (statusDiv) statusDiv.textContent = 'Info not found.';
+            infoParts.push(`Account: ${accountName}`);
         }
-    } else {
-         console.log('VBSFU: Account Name field container not found on page.');
-         if (statusDiv) statusDiv.textContent = 'Not a Case page?';
     }
+    
+    // --- Display the combined info ---
+    infoContainer.innerHTML = ''; // Clear previous info
+    if (infoParts.length > 0) {
+        const infoDisplayDiv = document.createElement('div');
+        infoDisplayDiv.className = 'vbsfu-info-display';
+        infoDisplayDiv.style.cssText = `font-size: 1.1em; font-weight: 600; color: #664d03; background-color: #fffbe6; padding: 8px 14px; border-radius: 6px; border-left: 5px solid #ffc107;`;
+        infoDisplayDiv.textContent = infoParts.join(' / ');
+        infoContainer.appendChild(infoDisplayDiv);
+        console.log(`VBSFU: Displayed Info: "${infoParts.join(' / ')}"`);
+    }
+
+    if (statusDiv) statusDiv.textContent = 'Key info shown.';
 }
 
 
@@ -215,7 +202,7 @@ function injectUI() {
     const toggleButton = document.createElement('button');
     toggleButton.id = 'vbsfu-toggle';
     toggleButton.innerHTML = '&#x1F6E0;&#xFE0F;';
-    toggleButton.setAttribute('aria-label', 'Toggle Salesforce Utilities Panel');
+    toggleButton.setAttribute('aria-label', 'Toggle Panel');
 
     const modalOverlay = document.createElement('div');
     modalOverlay.id = 'vbsfu-modal-overlay';
@@ -225,11 +212,11 @@ function injectUI() {
     modalClose.id = 'vbsfu-modal-close';
     modalClose.innerHTML = '&times;';
     const modalTitle = document.createElement('h5');
-    modalTitle.textContent = 'About VB Salesforce Utils';
+    modalTitle.textContent = 'Helper for PSM Salesforce';
     const modalBody = document.createElement('div');
     modalBody.id = 'vbsfu-modal-body';
     const extensionVersion = chrome.runtime.getManifest().version;
-    modalBody.innerHTML = `<p><strong>Version:</strong> ${extensionVersion}</p><p>For information on this Chrome extension, contact Vincent Borghi.</p>`;
+    modalBody.innerHTML = `<p><strong>Version:</strong> ${extensionVersion}</p><p>This Chrome extension is epxerimental. For information or feedback, contact Vincent Borghi.</p>`;
     modalContent.appendChild(modalClose);
     modalContent.appendChild(modalTitle);
     modalContent.appendChild(modalBody);
@@ -264,9 +251,9 @@ function injectUI() {
         try {
             statusDiv.textContent = 'Preparing page...';
             statusDiv.style.color = 'var(--vbsfu-status-warn)';
-            await waitForElement('a.slds-card__header-link[href*="/related/PSM_Notes__r/view"]', document, 10000).then(el => el.scrollIntoView({ block: 'center' }));
+            await waitForElement('a.slds-card__header-link[href*="/related/PSM_Notes__r/view"]', document, 5000).then(el => el.scrollIntoView({ block: 'center' }));
             await new Promise(r => setTimeout(r, 500));
-            await waitForElement('div.forceListViewManager[aria-label*="Emails"]', document, 10000).then(el => el.scrollIntoView({ block: 'center' }));
+            await waitForElement('div.forceListViewManager[aria-label*="Emails"]', document, 5000).then(el => el.scrollIntoView({ block: 'center' }));
             await new Promise(r => setTimeout(r, 500));
             window.scrollTo({ top: 0, behavior: 'auto' });
             statusDiv.textContent = 'Initiating...';
@@ -290,7 +277,8 @@ function injectUI() {
     copyButton.onclick = () => {
         statusDiv.textContent = '';
         statusDiv.style.color = 'var(--vbsfu-status-success)';
-        const recordNumber = findCaseNumberSpecific(); // Note: This function is in content.js
+        // Note: findCaseNumberSpecific() is defined in content.js and available globally here.
+        const recordNumber = findCaseNumberSpecific();
         const currentUrl = window.location.href;
         let objectType = currentUrl.includes('/Case/') ? 'Case' : 'WorkOrder';
 
