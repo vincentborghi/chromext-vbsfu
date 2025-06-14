@@ -1,18 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Salesforce Case Full View",
-  "version": "2.1", // 20250404 WorkOrder handled
+  "version": "2.2",
   "description": "Displays Salesforce Case or WorkOrder details.",
   "permissions": [
-      "activeTab",
-      "storage", // 20250407
     "scripting"
   ],
   "host_permissions": [
-    "*://*.lightning.force.com/*" 
+    "*://*.lightning.force.com/*"
   ],
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -29,10 +27,14 @@
   },
   "content_scripts": [
     {
-	"matches": ["*://*.lightning.force.com/lightning/r/Case/*",
-                    "*://*.lightning.force.com/lightning/r/WorkOrder/*"
-		   ],
-      "js": ["content.js"] 
+      "matches": [
+        "*://*.lightning.force.com/lightning/r/Case/*",
+        "*://*.lightning.force.com/lightning/r/WorkOrder/*"
+      ],
+      "js": [
+        "content.js",
+        "panel_injector.js"
+      ]
     }
   ]
 }
