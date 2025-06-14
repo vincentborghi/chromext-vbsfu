@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Salesforce for PSM Helper",
+  "name": "PSM Salesforce Helper",
   "version": "2.3",
   "description": "Provides several functions to circumvent some PSM Salesforce annoyances.",
   "permissions": [
     "scripting"
   ],
   "host_permissions": [
-    "*://*.lightning.force.com/*"
+    "*://myatos*.lightning.force.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -28,8 +28,8 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.lightning.force.com/lightning/r/Case/*",
-        "*://*.lightning.force.com/lightning/r/WorkOrder/*"
+        "*://myatos*.lightning.force.com/lightning/r/Case/*",
+        "*://myatos*.lightning.force.com/lightning/r/WorkOrder/*"
       ],
       "js": [
         "content.js",
