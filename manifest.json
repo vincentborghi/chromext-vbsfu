@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Salesforce Case Full View",
-  "version": "2.2",
-  "description": "Displays Salesforce Case or WorkOrder details.",
+  "name": "Salesforce for PSM Helper",
+  "version": "2.3",
+  "description": "Displays PSM Salesforce Case or WorkOrder details, with a movable panel.",
   "permissions": [
     "scripting"
   ],
@@ -34,6 +34,9 @@
       "js": [
         "content.js",
         "panel_injector.js"
+      ],
+      "css": [
+        "styles.css"
       ]
     }
   ]
